@@ -1,0 +1,60 @@
+<script>
+  import { onMount } from 'svelte'
+  import { Chromagram } from './assets/AKKORDER/main' // Update with the correct path
+  import { AudioInput } from './assets/AKKORDER/AudioInput' // Update with the correct path
+
+  let audioInput
+  let chromagram
+  let isAudioProcessing = false
+  let chromaData = []
+
+  onMount(() => {
+    audioInput = new AudioInput()
+    chromagram = new Chromagram(25, 12)
+
+    audioInput.on('audio-data', (data) => {
+      chromaData = chromagram.process(data)
+    })
+  })
+
+  const startAudioProcessing = async () => {
+    if (!isAudioProcessing) {
+      await audioInput.start()
+      isAudioProcessing = true
+    }
+  }
+
+  const stopAudioProcessing = () => {
+    if (isAudioProcessing) {
+      audioInput.stop()
+      isAudioProcessing = false
+    }
+  }
+</script>
+
+<button on:click={startAudioProcessing}> Start </button>
+
+<button on:click={stopAudioProcessing}> Stop </button>
+
+{#if chromaData.length > 0}
+  <div class="chromagram">
+    {#each chromaData as data, index}
+      <div class="note" style="height: {data * 100}%"></div>
+    {/each}
+  </div>
+{/if}
+
+<style>
+  .chromagram {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 300px;
+    background-color: #f3f3f3;
+  }
+  .note {
+    width: 20px;
+    margin: 0 2px;
+    background-color: #2196f3;
+  }
+</style>

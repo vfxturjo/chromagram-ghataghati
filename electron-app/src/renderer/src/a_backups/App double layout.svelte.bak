@@ -1,0 +1,122 @@
+<script lang="ts">
+  import { onMount } from 'svelte'
+  // import { Chromagram } from './Chromagram.js'
+  import { Chromagram } from './assets/AKKORDER/Chromagram'
+  import { arraySum } from './components/arraySum'
+
+  let audioContext
+  let microphone
+  let analyser
+  let fftSize = 2048
+  let bufferLength
+  let dataArray
+  let canvas, chromaCanvas, ctx, chromaCtx
+  let chromagram
+  let chromaDataBuffer = []
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  let frameSize = 4096 // Example frame size for Chromagram
+  let samplingFrequency = 44100 // Example sampling frequency
+  let isAudioSetup = false
+
+  onMount(() => {
+    canvas = <HTMLCanvasElement>document.querySelector('#spectrogram')
+    ctx = canvas.getContext('2d')
+
+    chromaCanvas = <HTMLCanvasElement>document.querySelector('#chromagram')
+    chromaCtx = chromaCanvas.getContext('2d')
+    // Initialize the chromagram data buffer
+    chromaDataBuffer = new Array(chromaCanvas.width).fill(new Array(12).fill(0))
+    drawChromaticScale()
+    // Now you can use chromaCtx for drawing
+
+    setupAudio()
+  })
+
+  async function setupAudio() {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    microphone = audioContext.createMediaStreamSource(stream)
+    analyser = audioContext.createAnalyser()
+    analyser.fftSize = fftSize
+    bufferLength = analyser.frequencyBinCount
+    dataArray = new Uint8Array(bufferLength)
+    microphone.connect(analyser)
+
+    chromagram = new Chromagram(frameSize, samplingFrequency)
+
+    isAudioSetup = true
+    draw()
+  }
+
+  function draw() {
+    if (!isAudioSetup) return
+    requestAnimationFrame(draw)
+
+    // SPECTOGRAM START
+    analyser.getByteFrequencyData(dataArray)
+
+    ctx.fillStyle = 'rgb(0, 0, 0)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    let barWidth = (canvas.width / bufferLength) * 2.5
+    let barHeight
+    let x = 0
+
+    for (let i = 0; i < bufferLength; i++) {
+      barHeight = dataArray[i]
+
+      ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)'
+      ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2)
+
+      x += barWidth + 1
+    }
+
+    // SPECTOGRAM DONE
+    // CHROMAGRAM START
+
+    // Process audio data through Chromagram
+    if (chromagram.isReady()) {
+      // console.log('im ready')
+
+      let chromaData = chromagram.getChromagram()
+      drawChromagram(chromaData)
+    }
+
+    // Continue processing audio data
+
+    chromagram.processAudioFrame(dataArray)
+  }
+
+  function drawChromaticScale() {
+    chromaCtx.fillStyle = 'white'
+    chromaCtx.font = '12px Arial'
+    notes.forEach((note, index) => {
+      chromaCtx.fillText(note, 0, index * 30 + 20)
+    })
+  }
+
+  function drawChromagram(chromaData) {
+    // Shift the chromagram data to the left
+    chromaDataBuffer.pop()
+    chromaDataBuffer.unshift(chromaData)
+
+    // Clear the canvas except for the scale
+    chromaCtx.clearRect(30, 0, chromaCanvas.width, chromaCanvas.height)
+    drawChromaticScale()
+
+    // Draw the chromagram
+    chromaDataBuffer.forEach((frame, x) => {
+      frame.forEach((value, y) => {
+        const brightness = value * 255
+        chromaCtx.fillStyle = `rgb(${brightness},${brightness},${brightness})`
+        chromaCtx.fillRect(x + 30, y * 30, 1, 30)
+      })
+    })
+  }
+</script>
+
+<button on:click={setupAudio}>Start Microphone</button>
+<button on:click={() => console.log(chromaDataBuffer)}>show chroma buffer</button>
+<button on:click={() => console.log(arraySum(chromaDataBuffer))}>SUM chroma buffer</button>
+<canvas id="spectrogram" width="640" height="100"></canvas>
+<canvas id="chromagram" width="640" height="360"></canvas>
