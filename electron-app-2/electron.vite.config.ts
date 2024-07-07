@@ -1,5 +1,6 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { purgeCss } from 'vite-plugin-tailwind-purgecss'
 
 export default defineConfig({
   main: {
@@ -12,6 +13,6 @@ export default defineConfig({
     server: {
       host: true
     },
-    plugins: [svelte()]
+    plugins: [svelte(), purgeCss()]
   }
 })

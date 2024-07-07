@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@tailwind variants;
+
+html,
+body {
+  @apply h-full overflow-hidden;
+}
+
+/** main app body css **/
+#app {
+  /* @apply bg-surface-50-900-token; */
+  /* @apply w-full h-screen; */
+}
+
+@layer base {
+  .check {
+    @apply bg-black;
+  }
+}
